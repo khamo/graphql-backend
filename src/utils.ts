@@ -74,6 +74,24 @@ export class InvalidLoginError extends Error {
   }
 }
 
+export class MissingFieldError extends Error {
+  constructor(requiredField: string) {
+    super(`Must have ${requiredField}.`);
+  }
+}
+
+export class NotFoundError extends Error {
+  constructor(recordType: string) {
+    super(`${recordType} not found.`);
+  }
+}
+
+export class MaxAttemptsError extends Error {
+  constructor() {
+    super("Too many attempts.");
+  }
+}
+
 export class InvalidPasswordError extends Error {
   constructor() {
     super("Invalid password");

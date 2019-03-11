@@ -26,3 +26,21 @@ export const sendConfirmationEmail = (email: string, code: string) => {
     }
   });
 };
+
+export const sendPasswordReset = (email: string, temporaryPassword: string) => {
+  const mailOptions = {
+    to: email,
+    from: "no-reply@wobbly.app",
+    subject: "Wobbly App - Email Confirmation",
+    html: `
+    <div>
+      <a href="https://icantotallycode.com/">
+    </div>
+    `
+  };
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      throw error;
+    }
+  });
+};
