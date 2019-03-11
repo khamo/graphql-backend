@@ -3,7 +3,7 @@ import * as nodemailer from "nodemailer";
 const { EMAIL_PASSWORD: pass, EMAIL_USER: user } = process.env;
 
 const transporter = nodemailer.createTransport({
-  service: "Sparkpost",
+  service: "gmail",
   auth: {
     user,
     pass
@@ -27,14 +27,19 @@ export const sendConfirmationEmail = (email: string, code: string) => {
   });
 };
 
-export const sendPasswordReset = (email: string, temporaryPassword: string) => {
+export const sendPasswordReset = (email: string, token: string) => {
   const mailOptions = {
     to: email,
     from: "no-reply@wobbly.app",
     subject: "Wobbly App - Email Confirmation",
     html: `
     <div>
-      <a href="https://icantotallycode.com/">
+      <a href="https://runranron.github.io/wobbly.app/resetpassword.html?token=${token}">
+        Click here to log magically into your app.
+      </a>
+      <p>
+        (Just in case: ${token})
+      </p>
     </div>
     `
   };
