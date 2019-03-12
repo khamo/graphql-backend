@@ -1,11 +1,10 @@
 import * as Sparkpost from "sparkpost";
 
-const transporter = new Sparkpost(process.env.EMAIL_KEY);
-
 export const sendConfirmationEmail = (address: string, code: string) => {
   if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "dev") {
     return;
   }
+  const transporter = new Sparkpost(process.env.EMAIL_KEY);
   const content = {
     from: process.env.EMAIL_SENDER,
     subject: "Wobbly App - Email Confirmation",
@@ -22,6 +21,7 @@ export const sendConfirmationEmail = (address: string, code: string) => {
 };
 
 export const sendPasswordReset = (address: string, token: string) => {
+  const transporter = new Sparkpost(process.env.EMAIL_KEY);
   const content = {
     from: process.env.EMAIL_SENDER,
     subject: "Wobbly App - Email Confirmation",
