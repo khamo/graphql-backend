@@ -105,25 +105,44 @@ export const auth: Pick<
     }
     const currentInfo = await ctx.prisma.person({ email });
     if (!currentInfo) {
-      throw new NotFoundError("User");
+      return true;
     }
     const payload = {
       email: currentInfo.email,
-      exp: Date.now() + RESET_EXPIRATION_INTERVAL
+      exp: Date.now() + RESET_EXPIRATION_INTERVAL,
+      nonce: currentInfo.password.substr(0, 6)
     };
     const token = jwt.sign(payload, process.env.APP_SECRET);
-    sendPasswordReset(email, token);
+    await sendPasswordReset(email, token);
     return true;
   },
-
-  resetPassword: async (parent, { token }, ctx) => {
+  resetPassword: async (parent, { token, newPassword }, ctx) => {
     if (!process.env.APP_SECRET) {
       throw new Error("Server authentication error");
     }
-    const { email, exp } = jwt.verify(token, process.env.APP_SECRET) as { email: string; exp: number };
+    const { email, exp, nonce } = jwt.verify(token, process.env.APP_SECRET) as {
+      email: string;
+      exp: number;
+      nonce: string;
+    };
+    if (!email || !exp || !nonce) {
+      throw new Error("Malformed token.");
+    }
     if (exp > Date.now()) {
       throw new Error("Token expired.");
     }
-    return ctx.prisma.person({ email });
+    const currentInfo = await ctx.prisma.person({ email });
+    if (nonce !== currentInfo.password.substr(0, 6)) {
+      throw new Error("Malformed token.");
+    }
+    await ctx.prisma.updatePerson({
+      where: {
+        email
+      },
+      data: {
+        password: newPassword
+      }
+    });
+    return currentInfo;
   }
 };

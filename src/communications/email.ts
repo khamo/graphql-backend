@@ -1,51 +1,47 @@
-import * as nodemailer from "nodemailer";
+import * as Sparkpost from "sparkpost";
 
-const { EMAIL_PASSWORD: pass, EMAIL_USER: user } = process.env;
+const transporter = new Sparkpost(process.env.EMAIL_KEY);
 
-const transporter = nodemailer.createTransport({
-  service: "Sparkpost",
-  auth: {
-    user,
-    pass
-  }
-});
-
-export const sendConfirmationEmail = (email: string, code: string) => {
+export const sendConfirmationEmail = (address: string, code: string) => {
   if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "dev") {
     return;
   }
-  const mailOptions = {
-    to: email,
-    from: "no-reply@wobbly.app",
+  const content = {
+    from: process.env.EMAIL_SENDER,
     subject: "Wobbly App - Email Confirmation",
     html: `<div style="display:flex;justify-content:center;align-items:center;">${code}</div>`
   };
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      throw error;
-    }
-  });
+  transporter.transmissions
+    .send({
+      content,
+      recipients: [{ address }]
+    })
+    .catch(e => {
+      throw e;
+    }); // for testing. probably want better results for logging later
 };
 
-export const sendPasswordReset = (email: string, token: string) => {
-  const mailOptions = {
-    to: email,
-    from: "no-reply@wobbly.app",
+export const sendPasswordReset = (address: string, token: string) => {
+  const content = {
+    from: process.env.EMAIL_SENDER,
     subject: "Wobbly App - Email Confirmation",
     html: `
     <div>
       <a href="https://runranron.github.io/wobbly.app/resetpassword.html?token=${token}">
         Click here to log magically into your app.
       </a>
-      <p>
-        (Just in case: ${token})
+      <p style="color: white;">
+        ${token}
       </p>
     </div>
     `
   };
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      throw error;
-    }
-  });
+  transporter.transmissions
+    .send({
+      content,
+      recipients: [{ address }]
+    })
+    .catch(e => {
+      throw e;
+    }); // for testing. probably want better results for logging later
 };

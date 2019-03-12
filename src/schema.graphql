@@ -12,7 +12,7 @@ type Mutation {
   login(email: String!, password: String!): AuthPayload!
   confirmEmail(confirmationCode: String): Person!
   sendPasswordReset(email: String): Boolean!
-  resetPassword(token: String!): Person!
+  resetPassword(newPassword: String!, token: String!): Person!
 
   updatePerson(email: String, oldPassword: String, newPassword: String, name: String): Person!
   deletePerson(password: String): DeletionResponse!
