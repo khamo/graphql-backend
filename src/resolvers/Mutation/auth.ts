@@ -1,6 +1,7 @@
 import * as bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 
+import { sendPasswordReset } from "../../communications/email";
 import { sendConfirmationEmail } from "../../communications/email";
 import { MutationResolvers } from "../../generated/graphqlgen";
 import {
@@ -9,10 +10,19 @@ import {
   getPasswordHash,
   getPersonId,
   InvalidLoginError,
+  MissingFieldError,
+  NotFoundError,
   validatePersonFields
 } from "../../utils";
 
-export const auth: Pick<MutationResolvers.Type, "signup" | "login" | "confirmEmail"> = {
+const MAX_ATTEMPTS = 5;
+const RETRY_INTERVAL = 1000 * 60 * 5; // five minutes
+const RESET_EXPIRATION_INTERVAL = 100 * 60 * 20; // 20 minutes
+
+export const auth: Pick<
+  MutationResolvers.Type,
+  "signup" | "login" | "confirmEmail" | "sendPasswordReset" | "resetPassword"
+> = {
   signup: async (parent, { email, name, password }, ctx) => {
     if (!process.env.APP_SECRET) {
       throw new Error("Server authentication error");
@@ -85,5 +95,35 @@ export const auth: Pick<MutationResolvers.Type, "signup" | "login" | "confirmEma
         emailConfirmed: true
       }
     });
+  },
+  sendPasswordReset: async (parent, { email }, ctx) => {
+    if (!process.env.APP_SECRET) {
+      throw new Error("Server authentication error");
+    }
+    if (!email) {
+      throw new MissingFieldError("email");
+    }
+    const currentInfo = await ctx.prisma.person({ email });
+    if (!currentInfo) {
+      throw new NotFoundError("User");
+    }
+    const payload = {
+      email: currentInfo.email,
+      exp: Date.now() + RESET_EXPIRATION_INTERVAL
+    };
+    const token = jwt.sign(payload, process.env.APP_SECRET);
+    sendPasswordReset(email, token);
+    return true;
+  },
+
+  resetPassword: async (parent, { token }, ctx) => {
+    if (!process.env.APP_SECRET) {
+      throw new Error("Server authentication error");
+    }
+    const { email, exp } = jwt.verify(token, process.env.APP_SECRET) as { email: string; exp: number };
+    if (exp > Date.now()) {
+      throw new Error("Token expired.");
+    }
+    return ctx.prisma.person({ email });
   }
 };

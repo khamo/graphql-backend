@@ -6,6 +6,10 @@ type Person {
     name: String!
     confirmationCode: String
     emailConfirmed: Boolean!
+    passwordAttempts: Int
+    lastPasswordAttempt: DateTime
+    confirmationAttempts: Int
+    lastConfirmationAttempt: DateTime
     groups: [Group!]
 }
 

@@ -11,6 +11,8 @@ type Mutation {
   signup(email: String!, password: String!, name: String!): AuthPayload!
   login(email: String!, password: String!): AuthPayload!
   confirmEmail(confirmationCode: String): Person!
+  sendPasswordReset(email: String): Boolean!
+  resetPassword(token: String!): Person!
 
   updatePerson(email: String, oldPassword: String, newPassword: String, name: String): Person!
   deletePerson(password: String): DeletionResponse!
@@ -39,7 +41,7 @@ type Person {
   id: ID!
   createdAt: DateTime!
   name: String!
-  email: String!
+  email: String! 
   emailConfirmed: Boolean!
   groups: [Group!]
 }
