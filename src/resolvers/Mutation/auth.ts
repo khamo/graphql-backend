@@ -17,7 +17,7 @@ import {
 
 const MAX_ATTEMPTS = 5;
 const RETRY_INTERVAL = 1000 * 60 * 5; // five minutes
-const RESET_EXPIRATION_INTERVAL = 100 * 60 * 20; // 20 minutes
+const RESET_EXPIRATION_INTERVAL = 1000 * 60 * 10; // 10 minutes
 
 export const auth: Pick<
   MutationResolvers.Type,
@@ -104,13 +104,15 @@ export const auth: Pick<
       throw new MissingFieldError("email");
     }
     const currentInfo = await ctx.prisma.person({ email });
+    // if user is not found, return true anyway
+    // (a different response could be used to confirm membership)
     if (!currentInfo) {
       return true;
     }
     const payload = {
-      email: currentInfo.email,
-      exp: Date.now() + RESET_EXPIRATION_INTERVAL,
-      nonce: currentInfo.password.substr(0, 6)
+      email: currentInfo.email, // no insecure direct object id
+      exp: Date.now() + RESET_EXPIRATION_INTERVAL, // short expiration
+      nonce: currentInfo.password.substr(0, 6) // unique, one-time, non-sensitive
     };
     const token = jwt.sign(payload, process.env.APP_SECRET);
     await sendPasswordReset(email, token);
@@ -128,7 +130,7 @@ export const auth: Pick<
     if (!email || !exp || !nonce) {
       throw new Error("Malformed token.");
     }
-    if (exp > Date.now()) {
+    if (Date.now() > exp) {
       throw new Error("Token expired.");
     }
     const currentInfo = await ctx.prisma.person({ email });
