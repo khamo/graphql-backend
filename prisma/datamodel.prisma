@@ -4,14 +4,16 @@ type Person {
     createdAt: DateTime!
     password: String!
     name: String!
-    passwordResetCode: String
-    passwordResetAttempts: Int
     confirmationCode: String
     emailConfirmed: Boolean!
-    passwordAttempts: Int
-    lastPasswordAttempt: DateTime
-    confirmationAttempts: Int
-    lastConfirmationAttempt: DateTime
+    passwordResetCode: String
+    passwordResetAttempts: Int!
+    lastPasswordResetAttempt: DateTime!
+    passwordAttempts: Int!
+    lastPasswordAttempt: DateTime!
+    confirmationAttempts: Int!
+    lastConfirmationAttempt: DateTime!
+    authLockedUntil: DateTime!
     groups: [Group!]
 }
 

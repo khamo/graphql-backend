@@ -4,7 +4,9 @@ import * as jwt from "jsonwebtoken";
 import { sendPasswordReset } from "../../communications/email";
 import { sendConfirmationEmail } from "../../communications/email";
 import { MutationResolvers } from "../../generated/graphqlgen";
+import { DateTimeInput, Int } from "../../generated/prisma-client";
 import {
+  AuthError,
   checkForPwnedPassword,
   getCode,
   getPasswordHash,
@@ -17,7 +19,7 @@ import {
 
 const MAX_ATTEMPTS = 5;
 const RETRY_INTERVAL = 1000 * 60 * 5; // five minutes
-const RESET_EXPIRATION_INTERVAL = 1000 * 60 * 10; // 10 minutes
+const AUTH_LOCK_INTERVAL = 1000 * 60 * 10; // 10 minutes
 
 export const auth: Pick<
   MutationResolvers.Type,
@@ -41,7 +43,14 @@ export const auth: Pick<
       confirmationCode,
       email,
       name,
-      password: hashedPassword
+      password: hashedPassword,
+      passwordAttempts: 0,
+      passwordResetAttempts: 0,
+      confirmationAttempts: 0,
+      lastConfirmationAttempt: new Date(),
+      lastPasswordAttempt: new Date(),
+      lastPasswordResetAttempt: new Date(),
+      authLockedUntil: new Date()
     });
 
     const token = jwt.sign({ personId: person.id }, process.env.APP_SECRET);
@@ -63,6 +72,10 @@ export const auth: Pick<
     const person = await ctx.prisma.person({ email });
     if (!person) {
       throw new InvalidLoginError();
+    }
+
+    if (person.authLockedUntil && new Date(person.authLockedUntil) > new Date()) {
+      throw new Error("Account Locked");
     }
 
     const valid = await bcrypt.compare(password, person.password);
@@ -123,7 +136,7 @@ export const auth: Pick<
     await sendPasswordReset(email, passwordResetCode);
     return true;
   },
-  resetPassword: async (parent, { resetCode, newPassword, email }, ctx) => {
+  resetPassword: async (parent, { passwordResetCode, newPassword, email }, ctx) => {
     if (!process.env.APP_SECRET) {
       throw new Error("Server authentication error");
     }
@@ -133,7 +146,43 @@ export const auth: Pick<
     const person = await ctx.prisma.person({ email });
 
     if (!person) {
-      throw new NotFoundError("Person");
+      // Same error if wrong email because at this point legit requests know whether they received a code or not.
+      throw new Error("Incorrect code.");
+    }
+
+    if (person.authLockedUntil && new Date(person.authLockedUntil) > new Date()) {
+      throw new Error("Account Locked");
+    }
+
+    if (person.passwordResetCode !== passwordResetCode) {
+      let { authLockedUntil, passwordResetAttempts, lastPasswordResetAttempt } = person as {
+        authLockedUntil: DateTimeInput;
+        passwordResetAttempts: Int;
+        lastPasswordResetAttempt: DateTimeInput;
+      };
+      if (
+        lastPasswordResetAttempt &&
+        new Date().getTime() - new Date(lastPasswordResetAttempt).getTime() < RETRY_INTERVAL
+      ) {
+        passwordResetAttempts += 1;
+      } else {
+        passwordResetAttempts = 1;
+      }
+      if (passwordResetAttempts > MAX_ATTEMPTS) {
+        authLockedUntil = new Date(Date.now() + AUTH_LOCK_INTERVAL);
+      }
+      lastPasswordResetAttempt = new Date();
+      await ctx.prisma.updatePerson({
+        where: {
+          email
+        },
+        data: {
+          lastPasswordResetAttempt,
+          passwordResetAttempts,
+          authLockedUntil
+        }
+      });
+      throw new InvalidLoginError();
     }
 
     await ctx.prisma.updatePerson({
@@ -141,7 +190,8 @@ export const auth: Pick<
         email
       },
       data: {
-        password: newPassword
+        password: newPassword,
+        passwordResetAttempts: 0
       }
     });
 
