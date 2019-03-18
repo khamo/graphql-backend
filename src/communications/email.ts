@@ -20,21 +20,12 @@ export const sendConfirmationEmail = (address: string, code: string) => {
     }); // for testing. probably want better results for logging later
 };
 
-export const sendPasswordReset = (address: string, token: string) => {
+export const sendPasswordReset = (address: string, code: string) => {
   const transporter = new Sparkpost(process.env.EMAIL_KEY);
   const content = {
     from: process.env.EMAIL_SENDER,
     subject: "Wobbly App - Email Confirmation",
-    html: `
-    <div>
-      <a href="https://runranron.github.io/wobbly.app/resetpassword.html?token=${token}">
-        Click here to log magically into your app.
-      </a>
-      <p style="color: white;">
-        ${token}
-      </p>
-    </div>
-    `
+    html: `<div style="display:flex;justify-content:center;align-items:center;">${code}</div>`
   };
   transporter.transmissions
     .send({

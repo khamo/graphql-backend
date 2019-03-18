@@ -109,34 +109,33 @@ export const auth: Pick<
     if (!currentInfo) {
       return true;
     }
-    const payload = {
-      email: currentInfo.email, // no insecure direct object id
-      exp: Date.now() + RESET_EXPIRATION_INTERVAL, // short expiration
-      nonce: currentInfo.password.substr(0, 6) // unique, one-time, non-sensitive
-    };
-    const token = jwt.sign(payload, process.env.APP_SECRET);
-    await sendPasswordReset(email, token);
+    const passwordResetCode = getCode(6);
+
+    await ctx.prisma.updatePerson({
+      where: {
+        id: currentInfo.id
+      },
+      data: {
+        passwordResetCode
+      }
+    });
+
+    await sendPasswordReset(email, passwordResetCode);
     return true;
   },
-  resetPassword: async (parent, { token, newPassword }, ctx) => {
+  resetPassword: async (parent, { resetCode, newPassword, email }, ctx) => {
     if (!process.env.APP_SECRET) {
       throw new Error("Server authentication error");
     }
-    const { email, exp, nonce } = jwt.verify(token, process.env.APP_SECRET) as {
-      email: string;
-      exp: number;
-      nonce: string;
-    };
-    if (!email || !exp || !nonce) {
-      throw new Error("Malformed token.");
+    if (!email) {
+      throw new InvalidLoginError();
     }
-    if (Date.now() > exp) {
-      throw new Error("Token expired.");
+    const person = await ctx.prisma.person({ email });
+
+    if (!person) {
+      throw new NotFoundError("Person");
     }
-    const currentInfo = await ctx.prisma.person({ email });
-    if (nonce !== currentInfo.password.substr(0, 6)) {
-      throw new Error("Malformed token.");
-    }
+
     await ctx.prisma.updatePerson({
       where: {
         email
@@ -145,6 +144,10 @@ export const auth: Pick<
         password: newPassword
       }
     });
-    return currentInfo;
+
+    return {
+      token: jwt.sign({ personId: person.id }, process.env.APP_SECRET),
+      person
+    };
   }
 };

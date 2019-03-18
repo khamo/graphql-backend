@@ -4,6 +4,8 @@ type Person {
     createdAt: DateTime!
     password: String!
     name: String!
+    passwordResetCode: String
+    passwordResetAttempts: Int
     confirmationCode: String
     emailConfirmed: Boolean!
     passwordAttempts: Int
