@@ -141,7 +141,7 @@ export const auth: Pick<
       throw new Error("Server authentication error");
     }
     if (!email) {
-      throw new InvalidLoginError();
+      throw new Error("Email required.");
     }
     const person = await ctx.prisma.person({ email });
 
@@ -182,7 +182,7 @@ export const auth: Pick<
           authLockedUntil
         }
       });
-      throw new InvalidLoginError();
+      throw new Error("Incorrect code.");
     }
 
     await ctx.prisma.updatePerson({
